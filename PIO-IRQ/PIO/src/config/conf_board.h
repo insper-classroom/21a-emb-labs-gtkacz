@@ -3,7 +3,7 @@
  *
  * \brief SAME70 Xplained board configuration
  *
- * Copyright (c) 2015-2016 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2015-2016 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -22,6 +22,9 @@
  * 3. The name of Atmel may not be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
+ * 4. This software may only be redistributed and used in connection with an
+ *    Atmel microcontroller product.
+ *
  * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
@@ -36,25 +39,19 @@
  *
  * \asf_license_stop
  */
+/*
+ * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
+ */
 
-#ifndef CONF_BOARD_H_INCLUDED
-#define CONF_BOARD_H_INCLUDED
+#ifndef CONF_BOARD_H
+#define CONF_BOARD_H
 
 /* Enable ICache and DCache */
 #define CONF_BOARD_ENABLE_CACHE
 
-#define CONF_BOARD_UART_CONSOLE
 
-//#define CONF_BOARD_SPI
-
-//#define CONF_BOARD_SPI_NPCS1
-
-#define CONF_BOARD_TWIHS0
-
-/* Indicates board has an ILI9488 external component to control LCD */
-#define CONF_BOARD_ILI9488
-
-/** Enable EMAC feature */
-#define CONF_BOARD_SDRAMC
-
-#endif /* CONF_BOARD_H_INCLUDED */
+#define SSD1306_DC_PIN               PIO_PB3_IDX
+#define SSD1306_RES_PIN              PIO_PC17_IDX
+#define GFX_MONO_UG_2832HSWEG04
+#define CONFIG_SSD1306_FRAMEBUFFER
+#endif /* CONF_BOARD_H */
