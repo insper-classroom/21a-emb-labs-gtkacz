@@ -1,22 +1,3 @@
-/************************************************************************
- * 5 semestre - Eng. da Computao - Insper
- * Rafael Malcervelli - rafaelsm9@al.insper.edu.br
- *
- * Material:
- *  - Kit: ATMEL SAME70-XPLD - ARM CORTEX M7
- *
- * Objetivo:
- *  - Botão 1 da placa OLED altera a frequência na qual o LED irá piscar. 
- *	- Além disso, exibe o valor da frequência no display do OLED.
- *
- * Periféricos:
- *  - PIO
- *  - PMC
- *
- * Log:
- *  - 09/2021: Criação
- ************************************************************************/
-
 #include "asf.h"
 #include "gfx_mono_ug_2832hsweg04.h"
 #include "gfx_mono_text.h"
