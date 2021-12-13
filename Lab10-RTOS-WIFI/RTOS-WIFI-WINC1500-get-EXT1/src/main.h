@@ -48,9 +48,9 @@ extern "C" {
 #include "driver/include/m2m_wifi.h"
 
 /** Wi-Fi Settings */
-#define MAIN_WLAN_SSID				      "Spike" /**< Destination SSID */
+#define MAIN_WLAN_SSID				      "Veter" /**< Destination SSID */
 #define MAIN_WLAN_AUTH                    M2M_WIFI_SEC_WPA_PSK /**< Security manner */
-#define MAIN_WLAN_PSK                     "113Familia!150600" /**< Password for Destination SSID */
+#define MAIN_WLAN_PSK                     "travi2910" /**< Password for Destination SSID */
 
 #define MAIN_SERVER_PORT  5000
 #define MAIN_SERVER_NAME  "192.168.15.86"

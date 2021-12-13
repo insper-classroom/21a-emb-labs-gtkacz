@@ -81,10 +81,6 @@ extern void vApplicationMallocFailedHook(void){
   configASSERT( ( volatile void * ) NULL );
 }
 
-/************************************************************************/
-/* funcoes                                                              */
-/************************************************************************/
-// Funcao retirada de: https://stackoverflow.com/questions/26620388/c-substrings-c-string-slicing by Crowman
 void slice_str(const char * str, char * buffer, size_t start, size_t end){
 	size_t j = 0;
 	for ( size_t i = start; i <= end; ++i ){
@@ -92,6 +88,7 @@ void slice_str(const char * str, char * buffer, size_t start, size_t end){
 	}
 	buffer[j] = 0;
 }
+
 /************************************************************************/
 /* callbacks                                                            */
 /************************************************************************/
