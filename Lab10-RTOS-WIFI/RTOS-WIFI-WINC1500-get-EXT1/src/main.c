@@ -17,8 +17,8 @@ uint32_t gu32HostIp = 0;
 static SOCKET tcp_client_socket = -1;
 
 /** Receive buffer definition. */
-static uint8_t g_receivedBuffer[MAIN_WIFI_M2M_BUFFER_SIZE] = {0};
-static uint8_t g_sendBuffer[MAIN_WIFI_M2M_BUFFER_SIZE] = {0};
+static uint8_t g_receivedBuffer[MAIN_WIFI_M2M_BUFFER_SIZE] ={0};
+static uint8_t g_sendBuffer[MAIN_WIFI_M2M_BUFFER_SIZE] ={0};
 
 /** Wi-Fi status variable. */
 static bool gbConnectedWifi = false;
@@ -46,6 +46,11 @@ static char server_host_name[] = MAIN_SERVER_NAME;
 #define TASK_PROCESS_STACK_SIZE   (4*4096/sizeof(portSTACK_TYPE))
 #define TASK_PROCESS_PRIORITY     (0)
 
+#define LED_PIO            PIOC	              // periferico que controla o LED
+#define LED_PIO_ID         ID_PIOC            // ID do perif�rico PIOC (controla LED)
+#define LED_PIO_IDX        8	              // ID do LED no PIO
+#define LED_PIO_IDX_MASK   (1 << LED_PIO_IDX) // Mascara para CONTROLARMOS o LED
+
 SemaphoreHandle_t xSemaphore;
 QueueHandle_t xQueueMsg;
 
@@ -57,7 +62,7 @@ extern void vApplicationMallocFailedHook(void);
 extern void xPortSysTickHandler(void);
 
 TaskHandle_t xHandleWifi = NULL;
-
+char ledStatus[60];
 /************************************************************************/
 /* HOOKs                                                                */
 /************************************************************************/
@@ -65,7 +70,7 @@ TaskHandle_t xHandleWifi = NULL;
 extern void vApplicationStackOverflowHook(xTaskHandle *pxTask,
 signed char *pcTaskName){
   printf("stack overflow %x %s\r\n", pxTask, (portCHAR *)pcTaskName);
-  for (;;) {  }
+  for (;;){  }
 }
 
 extern void vApplicationIdleHook(void){}
@@ -79,7 +84,14 @@ extern void vApplicationMallocFailedHook(void){
 /************************************************************************/
 /* funcoes                                                              */
 /************************************************************************/
-
+// Funcao retirada de: https://stackoverflow.com/questions/26620388/c-substrings-c-string-slicing by Crowman
+void slice_str(const char * str, char * buffer, size_t start, size_t end){
+	size_t j = 0;
+	for ( size_t i = start; i <= end; ++i ){
+		buffer[j++] = str[i];
+	}
+	buffer[j] = 0;
+}
 /************************************************************************/
 /* callbacks                                                            */
 /************************************************************************/
@@ -92,8 +104,7 @@ extern void vApplicationMallocFailedHook(void){
 *
 * \return None.
 */
-static void resolve_cb(uint8_t *hostName, uint32_t hostIp)
-{
+static void resolve_cb(uint8_t *hostName, uint32_t hostIp){
   gu32HostIp = hostIp;
   gbHostIpByName = true;
   printf("resolve_cb: %s IP address is %d.%d.%d.%d\r\n\r\n", hostName,
@@ -110,21 +121,21 @@ static void resolve_cb(uint8_t *hostName, uint32_t hostIp)
 *
 * \return None.
 */
-static void socket_cb(SOCKET sock, uint8_t u8Msg, void *pvMsg)
-{
+static void socket_cb(SOCKET sock, uint8_t u8Msg, void *pvMsg){
   /* Check for socket event on TCP socket. */
-  if (sock == tcp_client_socket) {
+  if (sock == tcp_client_socket){
 
-    switch (u8Msg) {
+    switch (u8Msg){
       case SOCKET_MSG_CONNECT:
-      {
+     {
         printf("socket_msg_connect\n");
-        if (gbTcpConnection) {
+        if (gbTcpConnection){
           tstrSocketConnectMsg *pstrConnect = (tstrSocketConnectMsg *)pvMsg;
-          if (pstrConnect && pstrConnect->s8Error >= SOCK_ERR_NO_ERROR) {
+          if (pstrConnect && pstrConnect->s8Error >= SOCK_ERR_NO_ERROR){
             printf("socket_cb: connect ok \n");
             gbTcpConnected = true;
-            } else {
+            }
+            else{
             printf("socket_cb: connect error!\r\n");
             gbTcpConnection = false;
             gbTcpConnected = false;
@@ -135,16 +146,16 @@ static void socket_cb(SOCKET sock, uint8_t u8Msg, void *pvMsg)
       }
       break;
 
-      case SOCKET_MSG_RECV:
-      {
+      case SOCKET_MSG_RECV:{
         char *pcIndxPtr;
         char *pcEndPtr;
 
         tstrSocketRecvMsg *pstrRecv = (tstrSocketRecvMsg *)pvMsg;
-        if (pstrRecv && pstrRecv->s16BufferSize > 0) {
+        if (pstrRecv && pstrRecv->s16BufferSize > 0){
           xQueueSend(xQueueMsg, &pstrRecv, 10);
           xSemaphoreGive( xSemaphore );
-          }  else {
+          }
+          else{
           //printf("socket_cb: recv error!\r\n");
           close(tcp_client_socket);
           tcp_client_socket = -1;
@@ -166,16 +177,15 @@ static void socket_cb(SOCKET sock, uint8_t u8Msg, void *pvMsg)
 *
 * \return None.
 */
-static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
-{
-  switch (u8MsgType) {
+static void wifi_cb(uint8_t u8MsgType, void *pvMsg){
+  switch (u8MsgType){
     case M2M_WIFI_RESP_CON_STATE_CHANGED:
-    {
+   {
       tstrM2mWifiStateChanged *pstrWifiState = (tstrM2mWifiStateChanged *)pvMsg;
-      if (pstrWifiState->u8CurrState == M2M_WIFI_CONNECTED) {
+      if (pstrWifiState->u8CurrState == M2M_WIFI_CONNECTED){
         printf("wifi_cb: M2M_WIFI_CONNECTED\r\n");
         m2m_wifi_request_dhcp_client();
-        } else if (pstrWifiState->u8CurrState == M2M_WIFI_DISCONNECTED) {
+        } else if (pstrWifiState->u8CurrState == M2M_WIFI_DISCONNECTED){
         printf("wifi_cb: M2M_WIFI_DISCONNECTED\r\n");
         gbConnectedWifi = false;
         wifi_connected = 0;
@@ -185,7 +195,7 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
     }
 
     case M2M_WIFI_REQ_DHCP_CONF:
-    {
+   {
       uint8_t *pu8IPAddress = (uint8_t *)pvMsg;
       printf("wifi_cb: IP address is %u.%u.%u.%u\r\n",
       pu8IPAddress[0], pu8IPAddress[1], pu8IPAddress[2], pu8IPAddress[3]);
@@ -195,7 +205,7 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 
     case M2M_WIFI_RESP_GET_SYS_TIME:
     /*Initial first callback will be provided by the WINC itself on the first communication with NTP */
-    {
+   {
       tstrSystemTime *strSysTime_now = (tstrSystemTime *)pvMsg;
 
       /* Print the hour, minute and second.
@@ -211,7 +221,7 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
     }
 
     default:
-    {
+   {
       break;
     }
   }
@@ -221,7 +231,7 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 /* TASKS                                                                */
 /************************************************************************/
 
-static void task_process(void *pvParameters) {
+static void task_process(void *pvParameters){
 
   printf("task process created \n");
   vTaskDelay(1000);
@@ -229,7 +239,7 @@ static void task_process(void *pvParameters) {
   uint msg_counter = 0;
   tstrSocketRecvMsg *p_recvMsg;
 
-  enum states {
+  enum states{
     WAIT = 0,
     GET,
     ACK,
@@ -270,7 +280,7 @@ static void task_process(void *pvParameters) {
         printf(STRING_EOL);  printf(STRING_LINE);
         state = MSG;
       }
-      else {
+      else{
         state = TIMEOUT;
       };
       break;
@@ -283,10 +293,22 @@ static void task_process(void *pvParameters) {
       if(xQueueReceive(xQueueMsg, &p_recvMsg, 5000) == pdTRUE){
         printf(STRING_LINE);
         printf(p_recvMsg->pu8Buffer);
+		char led[25] = "led";
+		char *ret = strstr(p_recvMsg->pu8Buffer, led);
+		slice_str(ret, ledStatus, 7, 7);
+		printf("String: %s", ledStatus);
+		
+		if (strcmp(ledStatus, "1") == 0){
+			pio_clear(PIOC, LED_PIO_IDX_MASK);
+		}
+    else if (strcmp(ledStatus, "0") == 0){
+			pio_set(PIOC, LED_PIO_IDX_MASK);
+		}
+		
         printf(STRING_EOL);  printf(STRING_LINE);
         state = DONE;
       }
-      else {
+      else{
         state = TIMEOUT;
       };
       break;
@@ -306,7 +328,7 @@ static void task_process(void *pvParameters) {
   }
 }
 
-static void task_wifi(void *pvParameters) {
+static void task_wifi(void *pvParameters){
   tstrWifiInitParam param;
   struct sockaddr_in addr_in;
 
@@ -322,9 +344,9 @@ static void task_wifi(void *pvParameters) {
   /* Initialize Wi-Fi driver with data and status callbacks. */
   param.pfAppWifiCb = wifi_cb;
   int8_t ret = m2m_wifi_init(&param);
-  if (M2M_SUCCESS != ret) {
+  if (M2M_SUCCESS != ret){
     printf("main: m2m_wifi_init call error!(%d)\r\n", ret);
-    while (1) { }
+    while (1){ }
   }
 
   /* Initialize socket module. */
@@ -348,12 +370,12 @@ static void task_wifi(void *pvParameters) {
     vTaskDelay(50);
     m2m_wifi_handle_events(NULL);
 
-    if (wifi_connected == M2M_WIFI_CONNECTED) {
+    if (wifi_connected == M2M_WIFI_CONNECTED){
       /* Open client socket. */
-      if (tcp_client_socket < 0) {
+      if (tcp_client_socket < 0){
         printf(STRING_LINE);
         printf("socket init \n");
-        if ((tcp_client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((tcp_client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
           printf("main: failed to create TCP client socket error!\r\n");
           continue;
         }
@@ -361,7 +383,7 @@ static void task_wifi(void *pvParameters) {
         /* Connect server */
         printf("socket connecting\n");
         if (connect(tcp_client_socket, (struct sockaddr *)&addr_in,
-        sizeof(struct sockaddr_in)) != SOCK_ERR_NO_ERROR) {
+        sizeof(struct sockaddr_in)) != SOCK_ERR_NO_ERROR){
           close(tcp_client_socket);
           tcp_client_socket = -1;
           printf("main: error connect to socket\n");
@@ -373,10 +395,10 @@ static void task_wifi(void *pvParameters) {
   }
 }
 
-int main(void)
-{
-  /* Initialize the board. */
+int main(void){
   sysclk_init();
+  pmc_enable_periph_clk(LED_PIO_ID);
+  pio_set_output(LED_PIO, LED_PIO_IDX_MASK, 0, 0, 0);
   board_init();
 
   /* Initialize the UART console. */
@@ -388,6 +410,6 @@ int main(void)
 
   vTaskStartScheduler();
 
-  while(1) {};
+  while(1){};
   return 0;
 }
